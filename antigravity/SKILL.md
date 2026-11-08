@@ -15,6 +15,16 @@ Nothing here is machine-specific: every path derives at run time from the user's
 
 Requires a shell, `git`, and the project's test runner. The audit is the point of this skill and cannot run without them.
 
+Commands below are bash. On Windows, Claude Code's Bash tool runs Git Bash, which has everything they use (`tail`, `touch`, `$(...)`). Placeholders, filled in once per session:
+
+| Placeholder | Meaning |
+|---|---|
+| `<skill-dir>` | the directory holding this `SKILL.md` (Claude Code shows it as the skill's base directory) |
+| `<python>` | the Python 3 launcher found in setup step 1 |
+| `<scratch>` | your session scratchpad if you have one, otherwise a fresh directory under the OS temp dir |
+| `<flash>` | the newest Flash family from setup step 4, e.g. `gemini-3.8-flash` |
+| `<repo>` | the repository being worked on |
+
 ## When to delegate
 
 Delegate when volume is the cost: many files, boilerplate, repetitive transforms, or reading that would otherwise burn your context.
@@ -27,15 +37,15 @@ Write it yourself when the change is surgical (about 100 lines, or 1–3 files),
 
 Only when invoked as `/antigravity setup`, or when a dispatch fails because `agy` is missing.
 
-### 1. Locate or install `agy`
+### 1. Locate or install `agy`, find Python
 
-Try `agy --version` first. A tool session that started before an install carries a stale environment, so on Windows refresh it before concluding the binary is absent:
+Try `agy --version` first. A tool session that started before an install carries a stale environment, so before concluding the binary is absent, add its install directory to this session's PATH and try again:
 
-```bash
-$env:Path = [Environment]::GetEnvironmentVariable('Path','Machine') + ';' + [Environment]::GetEnvironmentVariable('Path','User')
-```
-
-Then check the platform's install path directly — `%LOCALAPPDATA%\agy\bin\agy.exe` on Windows, `~/.local/bin/agy` on macOS and Linux.
+| Platform | Install directory | Add to this session's PATH |
+|---|---|---|
+| Windows, Git Bash | `%LOCALAPPDATA%\agy\bin` | `export PATH="$PATH:$(cygpath "$LOCALAPPDATA")/agy/bin"` |
+| Windows, PowerShell | `%LOCALAPPDATA%\agy\bin` | `$env:Path += ";$env:LOCALAPPDATA\agy\bin"` |
+| macOS / Linux | `~/.local/bin` | `export PATH="$PATH:$HOME/.local/bin"` |
 
 Install only if it is genuinely absent:
 
@@ -44,9 +54,13 @@ Install only if it is genuinely absent:
 | Windows (PowerShell) | `irm https://antigravity.google/cli/install.ps1 \| iex` |
 | macOS / Linux | `curl -fsSL https://antigravity.google/cli/install.sh \| bash` |
 
-The installer adds its directory to PATH but cannot touch the running session — refresh as above rather than reporting failure.
+The installer adds its directory to PATH but cannot touch the running session — add it as above rather than reporting failure.
 
-Done when `agy --version` prints a version.
+**Python.** The watcher and the office installer need Python 3.8 or newer, standard library only. The launcher's name varies by machine: try `python3`, then `python`, then `py -3`, and use the first whose `--version` prints 3.8 or higher as `<python>`. Windows often has a `python` that only opens the Microsoft Store; it prints nothing useful, so move on to the next. If none works, say so and stop: the watcher is how you see a dispatch, and running blind is what this skill exists to avoid.
+
+**Watcher.** `agy_watch.py` normally ships beside this file, at `<skill-dir>/agy_watch.py`. If it is missing (the skill arrived as a single `SKILL.md`), save the appendix at the end of this file there instead, or to `<scratch>/agy_watch.py` if `<skill-dir>` is not writable, and use that path wherever this file says `<skill-dir>/agy_watch.py`. Check it with `<python> -I "<skill-dir>/agy_watch.py" --help`.
+
+Done when `agy --version` prints a version and the watcher prints its usage.
 
 ### 2. Read the live account
 
@@ -84,7 +98,7 @@ Compare versions numerically, segment by segment. Sorting the strings puts `gemi
 
 ### 5. Install the office skills
 
-Optional, and only if the user wants document work. `agy` discovers skills in `~/.gemini/config/skills/`, so this runs once per machine. Needs Python 3:
+Optional, and only if the user wants document work. `agy` discovers skills in `~/.gemini/config/skills/`, so this runs once per machine. Save it to `<scratch>` and run it with `<python> -I`:
 
 ```python
 import json, os, urllib.parse, urllib.request
@@ -184,10 +198,10 @@ agy -p "$(cat <scratch>/spec_<id>.md)" --model <flash>-medium --add-dir "<repo>"
 Then follow it in the foreground:
 
 ```bash
-python -I <scratch>/agy_watch.py "<scratch>/agy_<id>.ndjson" --follow
+<python> -I "<skill-dir>/agy_watch.py" "<scratch>/agy_<id>.ndjson" --follow
 ```
 
-It prints one line per step as Gemini works — each file write, each command with its duration, each tool error, and agy's own warnings prefixed `~` — so the user watches the run in the tool output instead of a blank wait. Relay the lines that matter as they land. Without `--follow` it prints a one-off snapshot. The script is in the appendix at the end of this file; save it to your scratchpad once per session.
+It prints one line per step as Gemini works — each file write, each command with its duration, each tool error, and agy's own warnings prefixed `~` — so the user watches the run in the tool output instead of a blank wait. Relay the lines that matter as they land. Without `--follow` it prints a one-off snapshot. Setup step 1 covers where the script lives.
 
 | Exit | Meaning | Next |
 |---|---|---|
@@ -222,8 +236,8 @@ touch "<scratch>/agy_<id>.in"; tail -n +1 -f "<scratch>/agy_<id>.in" | agy -p ""
 **Talk** with `--send`. It appends your message to the inbox, then follows Gemini's reply the same way `--follow` does:
 
 ```bash
-python -I <scratch>/agy_watch.py "<scratch>/agy_<id>.ndjson" --send "<scratch>/agy_<id>.in" @"<scratch>/spec_<id>.md"
-python -I <scratch>/agy_watch.py "<scratch>/agy_<id>.ndjson" --send "<scratch>/agy_<id>.in" "Use the existing logger, not print."
+<python> -I "<skill-dir>/agy_watch.py" "<scratch>/agy_<id>.ndjson" --send "<scratch>/agy_<id>.in" @"<scratch>/spec_<id>.md"
+<python> -I "<skill-dir>/agy_watch.py" "<scratch>/agy_<id>.ndjson" --send "<scratch>/agy_<id>.in" "Use the existing logger, not print."
 ```
 
 `@file` sends a file's contents, which is how the spec goes in; a plain string sends itself. The script writes the JSON line agy expects (`{"event":"user","message":{"content":...}}`), so never hand-write it — quoting a spec into JSON by hand breaks on the first quote mark.
@@ -310,7 +324,7 @@ Report to the user in terms of the acceptance criteria: which are met, which are
 
 ## Appendix: `agy_watch.py`
 
-Save verbatim as `<scratch>/agy_watch.py`. Standard library only.
+The same script that ships as `agy_watch.py` beside this file, for when only `SKILL.md` arrived. Save it verbatim as `<skill-dir>/agy_watch.py` (setup step 1). Standard library only, Python 3.8+.
 
 ```python
 """Watch and talk to an `agy` session that streams NDJSON.
