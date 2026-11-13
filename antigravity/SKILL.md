@@ -22,7 +22,7 @@ Commands below are bash. On Windows, Claude Code's Bash tool runs Git Bash, whic
 | `<skill-dir>` | the directory holding this `SKILL.md` (Claude Code shows it as the skill's base directory) |
 | `<python>` | the Python 3 launcher found in setup step 1 |
 | `<scratch>` | your session scratchpad if you have one, otherwise a fresh directory under the OS temp dir |
-| `<flash>` | the newest Flash family from setup step 4, e.g. `gemini-3.8-flash` |
+| `<model>` | the model family from setup step 4: `gemini-4-hydrogen` when listed, else the newest Flash such as `gemini-3.8-flash` |
 | `<repo>` | the repository being worked on |
 
 ## When to delegate
@@ -92,9 +92,14 @@ A Google Cloud pay-as-you-go account is already metered through the session, so 
 
 ### 4. Pin the model
 
-Run `agy models` and read what this account actually offers — availability differs by plan and by CLI version, and `agy` self-updates, so a hardcoded id eventually breaks. Pick the newest `*-flash-*` family present and record its three tiers for the table below.
+Run `agy models` and read what this account actually offers — availability differs by plan and by CLI version, and `agy` self-updates, so a hardcoded id eventually breaks. Pick in this order and record the family's tiers for the table below:
 
-Compare versions numerically, segment by segment. Sorting the strings puts `gemini-3.9-flash` above `gemini-3.10-flash`, which is backwards. If the newest family lacks a tier, fall back to the newest family that has all three.
+1. **Gemini 4 Hydrogen** (`gemini-4-hydrogen*`). Google dropped version numbers at Gemini 4 for element names; Hydrogen is the fast tier that replaces Flash. Prefer it whenever it is listed.
+2. **The newest `gemini-*-flash` family**, while Hydrogen has not reached this account or CLI version.
+
+Gemini 4 Carbon and Argon are the heavier tiers. Leave them alone unless the user asks: the point of this skill is that Gemini types cheaply while you do the reasoning.
+
+Read tier ids off the list rather than assuming Flash's `-low`/`-medium`/`-high`; Hydrogen may name its tiers differently (an `xhigh` tier exists). Compare Flash versions numerically, segment by segment: sorting the strings puts `gemini-3.9-flash` above `gemini-3.10-flash`, which is backwards. If the chosen family lacks a tier, fall back to the next family that has all three.
 
 ### 5. Install the office skills
 
@@ -148,7 +153,7 @@ Done when the run reports zero failures.
 ### 6. Verify
 
 ```bash
-agy -p "Reply with only: OK" --model <newest-flash-low> --output-format json --print-timeout 2m
+agy -p "Reply with only: OK" --model <model>-<lowest tier> --output-format json --print-timeout 2m
 ```
 
 Done when that returns `"status":"SUCCESS"`, and you have reported the account, its billing mode, and the model tiers you pinned.
@@ -157,17 +162,18 @@ Done when that returns `"status":"SUCCESS"`, and you have reported the account, 
 
 ## Model
 
-Flash only. You supply the reasoning; Gemini supplies the typing. Pick the tier from the task and pass it as one flag:
+Hydrogen by default, Flash as fallback (setup step 4). You supply the reasoning; Gemini supplies the typing. Pick the tier from the task and pass it as one flag:
 
 | Tier | Task |
 |---|---|
-| `-low` | mechanical edits — renames, boilerplate, format changes, a spec that names the exact lines |
-| `-medium` | ordinary feature work and bug fixes against an existing pattern — the default |
-| `-high` | unfamiliar algorithm, cross-file refactor, or a returning task the low tier already failed |
+| lowest (`-low`) | mechanical edits — renames, boilerplate, format changes, a spec that names the exact lines |
+| middle (`-medium`) | ordinary feature work and bug fixes against an existing pattern — the default |
+| `-high` | unfamiliar algorithm, cross-file refactor, or a returning task the lower tier already failed |
+| `-xhigh`, if listed | last escalation before writing it yourself |
 
-Effort is baked into the model id. `--model <flash>-low --effort high` is rejected: `conflicts with --effort=high`. Use the id alone.
+Effort is baked into the model id. `--model <model>-low --effort high` is rejected: `conflicts with --effort=high`. Use the id alone.
 
-Escalate a tier when a re-dispatch follows failed checks. Pro tiers stay unused — that budget is yours to spend on the audit, not Gemini's to spend on typing.
+Escalate a tier when a re-dispatch follows failed checks. Carbon, Argon and Pro tiers stay unused — that budget is yours to spend on the audit, not Gemini's to spend on typing.
 
 ## Preflight
 
@@ -192,7 +198,7 @@ Dispatch streams. Never run `agy -p` in the foreground: a real task outlives the
 Write the spec to a file, then launch with `run_in_background: true` (no trailing `&`), stdout to a per-run NDJSON log:
 
 ```bash
-agy -p "$(cat <scratch>/spec_<id>.md)" --model <flash>-medium --add-dir "<repo>" --dangerously-skip-permissions --output-format stream-json --print-timeout 30m > "<scratch>/agy_<id>.ndjson" 2>&1
+agy -p "$(cat <scratch>/spec_<id>.md)" --model <model>-medium --add-dir "<repo>" --dangerously-skip-permissions --output-format stream-json --print-timeout 30m > "<scratch>/agy_<id>.ndjson" 2>&1
 ```
 
 Then follow it in the foreground:
@@ -230,7 +236,7 @@ A one-shot dispatch ends after one turn. A live session stays open, so you and G
 **Launch** with `run_in_background: true`. agy reads one turn per line from an inbox file:
 
 ```bash
-touch "<scratch>/agy_<id>.in"; tail -n +1 -f "<scratch>/agy_<id>.in" | agy -p "" --input-format stream-json --output-format stream-json --model <flash>-medium --add-dir "<repo>" --dangerously-skip-permissions --print-timeout 30m > "<scratch>/agy_<id>.ndjson" 2>&1
+touch "<scratch>/agy_<id>.in"; tail -n +1 -f "<scratch>/agy_<id>.in" | agy -p "" --input-format stream-json --output-format stream-json --model <model>-medium --add-dir "<repo>" --dangerously-skip-permissions --print-timeout 30m > "<scratch>/agy_<id>.ndjson" 2>&1
 ```
 
 **Talk** with `--send`. It appends your message to the inbox, then follows Gemini's reply the same way `--follow` does:
@@ -311,7 +317,7 @@ Done when every modified file has been read, every check has run with its output
 - **Major flaws** — failing tests, wrong approach, hallucinated dependency: send it back rather than repairing it yourself.
 
 ```bash
-agy -c --conversation "<conversation_id>" -p "<failure logs verbatim + what to change>" --model <flash>-high --add-dir "<repo>" --dangerously-skip-permissions --output-format stream-json --print-timeout 30m > "<scratch>/agy_<id>_r2.ndjson" 2>&1
+agy -c --conversation "<conversation_id>" -p "<failure logs verbatim + what to change>" --model <model>-high --add-dir "<repo>" --dangerously-skip-permissions --output-format stream-json --print-timeout 30m > "<scratch>/agy_<id>_r2.ndjson" 2>&1
 ```
 
 Same launch as step 2 — background, then `--follow` the new log. If the work ran in a live session that is still open, skip the relaunch: `--send` the failure logs into it.

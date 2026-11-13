@@ -20,7 +20,7 @@ Installing by hand works too: copy this folder so that `SKILL.md` sits at `<skil
 1. Run `agy` once and finish the browser sign-in. Skip this if Antigravity Desktop is already signed in; the CLI shares its session.
 2. In Claude Code: `/antigravity setup`
 
-Setup installs `agy` if it is missing, reads which account is signed in and how it is billed, picks the newest Gemini Flash model, offers an optional bundle of office-document skills for Gemini, and runs a smoke test.
+Setup installs `agy` if it is missing, reads which account is signed in and how it is billed, picks Gemini 4 Hydrogen (or the newest Gemini Flash where Hydrogen is not available yet), offers an optional bundle of office-document skills for Gemini, and runs a smoke test.
 
 ## Requirements
 

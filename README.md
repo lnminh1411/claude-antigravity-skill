@@ -15,7 +15,7 @@ Unofficial. Not affiliated with Google or Anthropic.
 
 ## Why split the work
 
-Gemini Flash now writes code about as well as Claude's top model on coding benchmarks, at a fraction of the price, but falls well behind it on general agentic judgment. This skill puts each model where it is strong: Gemini types, Claude decides what to build and whether what came back is right. Nothing Gemini writes is staged until Claude has read the diff and run the project's checks.
+Google's fast tier (Gemini 4 Hydrogen, which replaced Gemini Flash) now scores close to Claude's top model on independent indexes, at a fraction of the price. This skill puts each model where it is strong: Gemini types, Claude decides what to build and whether what came back is right. Nothing Gemini writes is staged until Claude has read the diff and run the project's checks.
 
 ## Install
 
@@ -39,7 +39,7 @@ Then, in Claude Code:
 /antigravity setup
 ```
 
-Setup installs `agy` if it is missing, reads which Google account is signed in and how it is billed, picks the newest Gemini Flash model the account offers, optionally installs a bundle of office-document skills for Gemini, and runs a smoke test.
+Setup installs `agy` if it is missing, reads which Google account is signed in and how it is billed, picks Gemini 4 Hydrogen, or the newest Gemini Flash if Hydrogen is not available to the account yet, optionally installs a bundle of office-document skills for Gemini, and runs a smoke test.
 
 Signing in is yours to do: run `agy` once and complete the browser sign-in. Setup cannot do OAuth for you.
 
@@ -49,7 +49,7 @@ Signing in is yours to do: run `agy` once and complete the browser sign-in. Setu
 - **Live progress.** Dispatches stream NDJSON. `agy_watch.py --follow` prints a line per step as Gemini works (each file write, each command with its duration, each error) and stops on completion, on a stall, or before Claude Code's 600-second tool limit.
 - **Two-way chat.** A live session keeps one `agy` conversation open. Gemini ends a turn with `ASK: <question>` when it needs a decision; Claude answers with `agy_watch.py --send`. Audit failures go back into the same context instead of a cold restart.
 - **Pay-as-you-go first.** A Google Cloud pay-as-you-go account has no daily quota wall, so setup prefers it when the signed-in account is one.
-- **Model pinned at run time.** The skill reads `agy models` rather than hardcoding a model id, so it keeps working as the CLI updates itself and new Flash releases appear.
+- **Model pinned at run time.** The skill reads `agy models` rather than hardcoding a model id, so it keeps working as the CLI updates itself and new models appear.
 - **Knows when not to delegate.** Small, surgical changes are faster to write than to specify, so the skill writes those itself.
 
 ## Facts it relies on
