@@ -198,8 +198,10 @@ Dispatch streams. Never run `agy -p` in the foreground: a real task outlives the
 Write the spec to a file, then launch with `run_in_background: true` (no trailing `&`), stdout to a per-run NDJSON log:
 
 ```bash
-agy -p "$(cat <scratch>/spec_<id>.md)" --model <model>-medium --add-dir "<repo>" --dangerously-skip-permissions --output-format stream-json --print-timeout 30m > "<scratch>/agy_<id>.ndjson" 2>&1
+cd "<repo>" && agy -p "$(cat <scratch>/spec_<id>.md)" --model <model>-medium --add-dir "<repo>" --dangerously-skip-permissions --output-format stream-json --print-timeout 30m > "<scratch>/agy_<id>.ndjson" 2>&1
 ```
+
+`cd "<repo>"` is load-bearing: agy resolves relative paths against the shell's cwd, not `--add-dir`. Launched from elsewhere, Gemini writes the files there and the diff comes back empty.
 
 Then follow it in the foreground:
 
@@ -236,7 +238,7 @@ A one-shot dispatch ends after one turn. A live session stays open, so you and G
 **Launch** with `run_in_background: true`. agy reads one turn per line from an inbox file:
 
 ```bash
-touch "<scratch>/agy_<id>.in"; tail -n +1 -f "<scratch>/agy_<id>.in" | agy -p "" --input-format stream-json --output-format stream-json --model <model>-medium --add-dir "<repo>" --dangerously-skip-permissions --print-timeout 30m > "<scratch>/agy_<id>.ndjson" 2>&1
+cd "<repo>" && touch "<scratch>/agy_<id>.in"; tail -n +1 -f "<scratch>/agy_<id>.in" | agy -p "" --input-format stream-json --output-format stream-json --model <model>-medium --add-dir "<repo>" --dangerously-skip-permissions --print-timeout 30m > "<scratch>/agy_<id>.ndjson" 2>&1
 ```
 
 **Talk** with `--send`. It appends your message to the inbox, then follows Gemini's reply the same way `--follow` does:
@@ -387,7 +389,7 @@ def line_count(path):
 
 def detail(s):
     params = (s.get("tool_info") or {}).get("parameters") or {}
-    for key in ("CommandLine", "TargetFile", "AbsolutePath", "DirectoryPath", "Query", "Url"):
+    for key in ("CommandLine", "TargetFile", "Path", "AbsolutePath", "DirectoryPath", "Query", "Url"):
         if key in params:
             return str(params[key])
     return next((str(v) for v in params.values() if isinstance(v, str)), "")

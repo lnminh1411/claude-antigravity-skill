@@ -52,7 +52,7 @@ def line_count(path):
 
 def detail(s):
     params = (s.get("tool_info") or {}).get("parameters") or {}
-    for key in ("CommandLine", "TargetFile", "AbsolutePath", "DirectoryPath", "Query", "Url"):
+    for key in ("CommandLine", "TargetFile", "Path", "AbsolutePath", "DirectoryPath", "Query", "Url"):
         if key in params:
             return str(params[key])
     return next((str(v) for v in params.values() if isinstance(v, str)), "")
